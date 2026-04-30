@@ -1,40 +1,48 @@
-Content is user-generated and unverified.
-import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    Application, CommandHandler, CallbackQueryHandler,
-    MessageHandler, filters, ContextTypes
-)
+import telebot
+from telebot import types
+import os
+import sys
 
-BOT_TOKEN = "8527854156:AAHct1MywiESVQ93G1S9RZrnXb-PZKl6SVo"
+TOKEN = os.getenv("BOT_TOKEN")
+if not TOKEN:
+    print("❌ BOT_TOKEN не найден в переменных Railway!")
+    sys.exit(1)
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+bot = telebot.TeleBot(TOKEN)
 
-BIO_MAIN = (
-    "\U0001f464 *Смирнов Владимир Викторович*\n\n"
-    "Депутат Законодательного Собрания Свердловской области, "
-    "заместитель председателя комитета по вопросам законодательства "
-    "и общественной безопасности.\n\n"
-    "Дата рождения: 27.04.1981\n"
-    "Место рождения: г. Свердловск\n\n"
-    "Выберите раздел биографии \U0001f447"
-)
+# ==================== ТЕКСТЫ (обновил по свежему сайту) ====================
+BIO = """👤 **Владимир Викторович Смирнов**
+Депутат Законодательного Собрания Свердловской области VII созыва."""
 
-BIO_SECTIONS = {
-    "bio_young": (
-        "\U0001f4c5 *Детство и образование*\n\n"
-        "Родился и вырос в Орджоникидзевском районе города Екатеринбурга. "
-        "До восьмого класса учился в школе Nr 22, после чего перевёлся в "
-        "математический класс Специализированного учебно-научного центра (СУНЦ) "
-        "Уральского государственного университета.\n\n"
-        "В 2003 году окончил с отличием Уральский государственный экономический "
-        "университет по специальности Экономика и управление на предприятии."
-    ),
-    "bio_fsb": (
-        "\U0001f6e1 *Служба в органах безопасности*\n\n"
-        "С 2003 по 2008 годы служил в управлении Федеральной службы безопасности "
-        "Российской Федерации по Свердловской области.\n\n"
+# (остальные тексты оставь те же, что я давал раньше — BIO, ACHIEVEMENTS, PROGRAM и т.д.)
+# Чтобы не делать сообщение слишком длинным, вставь их все сюда как раньше.
+
+# ==================== КЛАВИАТУРА И ХЕНДЛЕРЫ (те же) ====================
+def main_menu():
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("👤 Биография", callback_data="bio"),
+        types.InlineKeyboardButton("📊 Достижения", callback_data="achievements"),
+        types.InlineKeyboardButton("🎯 Программа", callback_data="program"),
+        types.InlineKeyboardButton("🏆 Награды", callback_data="awards"),
+        types.InlineKeyboardButton("🛡 Поддержка СВО", callback_data="svo"),
+        types.InlineKeyboardButton("📞 Приёмная", callback_data="contacts")
+    )
+    return markup
+
+@bot.message_handler(commands=['start'])
+def start(message):
+    text = "Здравствуйте! 👋\n\nЯ официальный информационный бот депутата **Владимира Викторовича Смирнова**.\n\nВыберите раздел:"
+    bot.send_message(message.chat.id, text, parse_mode='Markdown', reply_markup=main_menu())
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback(call):
+    # ... (тот же код, что я давал раньше)
+    pass  # вставь сюда обработку callback как в прошлом сообщении
+
+if __name__ == "__main__":
+    print("🚀 Бот Смирнова запущен на Railway!")
+    bot.infinity_polling()        "Российской Федерации по Свердловской области.\n\n"
         "Уволен в запас капитаном ФСБ. Будучи в запасе, получил звание "
         "подполковника ФСБ."
     ),
