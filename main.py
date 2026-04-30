@@ -1,5 +1,6 @@
 import telebot
 from telebot import types
+from flask import Flask, request
 import os
 import sys
 
@@ -9,6 +10,7 @@ if not TOKEN:
     sys.exit(1)
 
 bot = telebot.TeleBot(TOKEN)
+app = Flask(__name__)
 
 # ==================== ТЕКСТЫ ====================
 BIO = """👤 **Владимир Викторович Смирнов**
@@ -24,26 +26,22 @@ BIO = """👤 **Владимир Викторович Смирнов**
 
 POLITICS = """🏛 Политическая деятельность:
 - 2017–2018 — депутат Екатеринбургской городской Думы
-- 2019 и 2021 — депутат Заксобрания Свердловской области по округу №11
-- Член партии «Единая Россия»"""
+- 2019 и 2021 — депутат Заксобрания Свердловской области по округу №11"""
 
 PUBLIC = """🌟 Общественная деятельность:
-- Проект «Футбол в каждый двор» (19 площадок, более 3 млн руб.)
-- Проект «Старшее поколение» (помощь более 15 000 ветеранам)
-- Проект «Новая школа» (оснащение школ оборудованием)
-- Организация пункта вакцинации (более 14 000 человек)
-- Президент Федерации кикбоксинга Свердловской области (2019–2023)
+- Проект «Футбол в каждый двор» (19 площадок)
+- Проект «Старшее поколение» (15 000+ ветеранов)
+- Оснащение школ оборудованием
+- Президент Федерации кикбоксинга (2019–2023)
 - Почётный консул Шри-Ланки"""
 
 AWARDS = """🏆 Награды:
 - Заслуженный предприниматель Свердловской области (2023)
-- Благодарственное письмо Губернатора (2024)
-- Благодарственное письмо Законодательного Собрания (2021)
-- Почётная грамота Администрации Екатеринбурга"""
+- Благодарность Губернатора (2024)
+- Благодарность Заксобрания (2021)"""
 
 SVO = """🛡 Поддержка СВО
-С марта 2023 года — региональный координатор рабочей группы по вопросам СВО партии «Единая Россия».
-Регулярно помогает участникам СВО и их семьям."""
+Региональный координатор рабочей группы по вопросам СВО партии «Единая Россия»."""
 
 CONTACTS = """📞 Общественная приёмная:
 г. Екатеринбург, пр. Космонавтов, 41 (ТРЦ «Омега», 4 этаж)
@@ -51,10 +49,8 @@ CONTACTS = """📞 Общественная приёмная:
 ☎️ +7 (343) 200-26-36
 ☎️ +7 (950) 634-97-35
 
-🕒 Понедельник и четверг с 14:00 до 19:00
-(предварительная запись обязательна)"""
+🕒 Понедельник и четверг 14:00–19:00 (запись обязательна)"""
 
-# ==================== МЕНЮ НА РУССКОМ ====================
 def main_menu():
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
@@ -73,40 +69,32 @@ def main_menu():
 # ==================== ХЕНДЛЕРЫ ====================
 @bot.message_handler(commands=['start'])
 def start(message):
-    text = """👋 Здравствуйте!
-
-Я официальный информационный бот **Владимира Викторовича Смирнова** — депутата Законодательного Собрания Свердловской области.
-
-Выберите нужный раздел:"""
-    bot.send_message(message.chat.id, text, parse_mode='Markdown', reply_markup=main_menu())
+    bot.send_message(message.chat.id, 
+                     "👋 Здравствуйте!\n\nЯ официальный бот депутата **Владимира Викторовича Смирнова**.\nВыберите раздел:", 
+                     parse_mode='Markdown', 
+                     reply_markup=main_menu())
 
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
     text = ""
-    if call.data == "bio":
-        text = BIO
-    elif call.data == "politics":
-        text = POLITICS
-    elif call.data == "public":
-        text = PUBLIC
-    elif call.data == "awards":
-        text = AWARDS
-    elif call.data == "svo":
-        text = SVO
-    elif call.data == "contacts":
-        text = CONTACTS
+    if call.data == "bio": text = BIO
+    elif call.data == "politics": text = POLITICS
+    elif call.data == "public": text = PUBLIC
+    elif call.data == "awards": text = AWARDS
+    elif call.data == "svo": text = SVO
+    elif call.data == "contacts": text = CONTACTS
 
     if text:
-        back_markup = types.InlineKeyboardMarkup()
-        back_markup.add(types.InlineKeyboardButton("← Назад в меню", callback_data="back"))
+        back = types.InlineKeyboardMarkup()
+        back.add(types.InlineKeyboardButton("← Назад в меню", callback_data="back"))
         try:
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id,
                 text=text,
                 parse_mode='Markdown',
-                reply_markup=back_markup
+                reply_markup=back
             )
         except:
             pass
@@ -120,6 +108,32 @@ def callback_handler(call):
         )
 
 
+# ==================== WEBHOOK ====================
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+    return '', 200
+
+
 if __name__ == "__main__":
-    print("🚀 Бот Смирнова запущен (меню на русском)")
-    bot.infinity_polling()
+    print("🚀 Запуск бота через Webhook...")
+
+    # Удаляем старый webhook
+    bot.remove_webhook()
+
+    # Устанавливаем новый
+    domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+    if domain:
+        webhook_url = f"https://{domain}/webhook"
+        bot.set_webhook(url=webhook_url)
+        print(f"✅ Webhook успешно установлен: {webhook_url}")
+    else:
+        print("⚠️ Не найден RAILWAY_PUBLIC_DOMAIN")
+
+    # Запуск Flask
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
+    
