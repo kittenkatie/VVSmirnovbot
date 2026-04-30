@@ -5,19 +5,50 @@ import sys
 
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
-    print("❌ BOT_TOKEN не найден в переменных Railway!")
+    print("❌ BOT_TOKEN не найден!")
     sys.exit(1)
 
 bot = telebot.TeleBot(TOKEN)
 
-# ==================== ТЕКСТЫ (обновил по свежему сайту) ====================
-BIO = """👤 **Владимир Викторович Смирнов**
-Депутат Законодательного Собрания Свердловской области VII созыва."""
+# ==================== ТЕКСТЫ ====================
+BIO = """👤 Владимир Викторович Смирнов
+Депутат Законодательного Собрания Свердловской области VII созыва, заместитель председателя комитета по вопросам законодательства и общественной безопасности.
 
-# (остальные тексты оставь те же, что я давал раньше — BIO, ACHIEVEMENTS, PROGRAM и т.д.)
-# Чтобы не делать сообщение слишком длинным, вставь их все сюда как раньше.
+Родился 27 апреля 1981 года в Свердловске. Окончил с отличием Уральский государственный экономический университет. Служил в Управлении ФСБ России по Свердловской области (подполковник запаса)."""
 
-# ==================== КЛАВИАТУРА И ХЕНДЛЕРЫ (те же) ====================
+ACHIEVEMENTS = """📊 Достижения:
+• Реконструировал 19 спортивных площадок в рамках проекта «Футбол в каждый двор»
+• Помог более 15 000 ветеранам и пенсионерам
+• Оснастил школы современным оборудованием на сумму более 3,5 млн рублей
+• Президент Федерации кикбоксинга Свердловской области
+• Почётный консул Шри-Ланки в Екатеринбурге"""
+
+PROGRAM = """🎯 Предвыборная программа:
+1️⃣ Поддержка участников СВО и их семей
+2️⃣ Развитие массового спорта
+3️⃣ Забота о ветеранах и пожилых
+4️⃣ Благоустройство территории
+5️⃣ Поддержка малого бизнеса
+6️⃣ Общественная безопасность"""
+
+AWARDS = """🏆 Награды:
+• Заслуженный предприниматель Свердловской области
+• Благодарности Губернатора и Законодательного Собрания
+• Медаль «40 лет ликвидации аварии на ЧАЭС» и другие"""
+
+SVO = """🛡 Поддержка СВО
+Региональный координатор рабочей группы по вопросам СВО партии «Единая Россия». Регулярно помогает бойцам и семьям участников специальной военной операции."""
+
+CONTACTS = """📞 Общественная приёмная:
+г. Екатеринбург, пр. Космонавтов, 41 (ТРЦ «Омега», 4 этаж)
+
+☎️ +7 (343) 200-26-36
+☎️ +7 (950) 634-97-35
+
+🕒 Понедельник и четверг с 14:00 до 19:00
+(запись обязательна)"""
+
+# ==================== КЛАВИАТУРА ====================
 def main_menu():
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
@@ -25,16 +56,61 @@ def main_menu():
         types.InlineKeyboardButton("📊 Достижения", callback_data="achievements"),
         types.InlineKeyboardButton("🎯 Программа", callback_data="program"),
         types.InlineKeyboardButton("🏆 Награды", callback_data="awards"),
-        types.InlineKeyboardButton("🛡 Поддержка СВО", callback_data="svo"),
+        types.InlineKeyboardButton("🛡 СВО", callback_data="svo"),
         types.InlineKeyboardButton("📞 Приёмная", callback_data="contacts")
     )
     return markup
 
+
+# ==================== ХЕНДЛЕРЫ ====================
 @bot.message_handler(commands=['start'])
 def start(message):
-    text = "Здравствуйте! 👋\n\nЯ официальный информационный бот депутата **Владимира Викторовича Смирнова**.\n\nВыберите раздел:"
+    text = "Здравствуйте! 👋\n\nЯ официальный информационный бот депутата **Владимира Викторовича Смирнова**.\n\nВыберите интересующий раздел:"
     bot.send_message(message.chat.id, text, parse_mode='Markdown', reply_markup=main_menu())
 
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_handler(call):
+    text = ""
+    if call.data == "bio":
+        text = BIO
+    elif call.data == "achievements":
+        text = ACHIEVEMENTS
+    elif call.data == "program":
+        text = PROGRAM
+    elif call.data == "awards":
+        text = AWARDS
+    elif call.data == "svo":
+        text = SVO
+    elif call.data == "contacts":
+        text = CONTACTS
+
+    # Заменяем сообщение на выбранный текст + кнопку назад
+    try:
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text=text,
+            parse_mode='Markdown',
+            reply_markup=types.InlineKeyboardMarkup().add(
+                types.InlineKeyboardButton("← Назад в меню", callback_data="back")
+            )
+        )
+    except:
+        pass
+
+    if call.data == "back":
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text="Выберите раздел 👇",
+            reply_markup=main_menu()
+        )
+
+
+if __name__ == "__main__":
+    print("🚀 Бот Смирнова успешно запущен на Railway!")
+    bot.infinity_polling()
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
     # ... (тот же код, что я давал раньше)
